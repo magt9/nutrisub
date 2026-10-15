@@ -1,177 +1,368 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NutriFit Planner</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white; }
-            .print-shadow-none { box-shadow: none !important; border: 1px solid #e5e7eb; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NutriFit Planner - Planes Nutricionales y Progreso</title>
+  
+  <!-- Tailwind CSS por CDN -->
+  <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    [x-cloak] { display: none !important; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #plan-impresion, #plan-impresion * { visibility: visible; }
+      #plan-impresion {
+        position: absolute; left: 0; top: 0; width: 100%;
+        font-family: sans-serif; color: black; padding: 20px;
+      }
+      .no-print { display: none !important; }
+    }
+  </style>
+
+  <!-- SDKs de Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  
+  <!-- Lógica y Framework Alpine.js -->
+  <script src="./js/script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@2.8.2/dist/alpine.min.js" defer></script>
 </head>
-<body class="bg-gray-100 text-gray-800 font-sans min-h-screen">
+<body :class="darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-100 text-gray-800'" class="min-h-screen antialiased transition-colors duration-200" x-data="initNutriApp()" x-init="initDatabase()">
 
-    <nav class="bg-emerald-600 text-white p-4 shadow-md no-print">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold"><i class="fa-solid fa-leaf mr-2"></i> NutriFit Planner</h1>
-            <button onclick="window.print()" class="bg-white text-emerald-600 px-4 py-2 rounded font-bold hover:bg-gray-100 transition">
-                <i class="fa-solid fa-print"></i> Imprimir Plan
-            </button>
+  <!-- Pantalla de Carga Inicial -->
+  <div x-show="cargandoAuth" class="min-h-screen flex items-center justify-center font-bold text-gray-500 text-sm">
+    Cargando sistema de Nutrición...
+  </div>
+
+  <!-- Pantalla de Login / Registro -->
+  <div x-show="!cargandoAuth && !user" x-cloak class="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-600 to-teal-800 p-4">
+    <div class="bg-white text-gray-800 p-6 md:p-8 rounded-3xl shadow-2xl w-full max-w-md">
+      <div class="text-center mb-6">
+        <span class="text-5xl">🥗</span>
+        <h1 class="text-2xl font-black mt-2">NutriFit Planner</h1>
+        <p class="text-xs text-gray-500" x-text="modoRegistro ? 'Crea tu cuenta para guardar tu progreso' : 'Ingresa a tu portal nutricional'"></p>
+      </div>
+
+      <form @submit.prevent="procesarAuth()" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Correo Electrónico:</label>
+          <input type="email" x-model="emailAuth" required placeholder="tu@correo.com" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
         </div>
-    </nav>
+        <div>
+          <label class="block text-xs font-bold text-gray-700 mb-1">Contraseña:</label>
+          <input type="password" x-model="passAuth" required placeholder="••••••••" class="w-full p-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
 
-    <main class="max-w-6xl mx-auto p-4 mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <button type="submit" class="w-full bg-emerald-600 text-white font-black py-3 rounded-xl shadow-lg hover:bg-emerald-700 transition" x-text="modoRegistro ? 'Crear Cuenta' : 'Iniciar Sesión'"></button>
+      </form>
+
+      <div class="mt-6 text-center border-t pt-4">
+        <button @click="modoRegistro = !modoRegistro" class="text-xs font-bold text-emerald-600 hover:underline">
+          <span x-text="modoRegistro ? '¿Ya tienes cuenta? Inicia Sesión' : '¿No tienes cuenta? Regístrate aquí'"></span>
+        </button>
+      </div>
+
+      <!-- DESLINDE DE RESPONSABILIDAD EN LOGIN -->
+      <div class="mt-6 border-t pt-3 text-[10px] text-gray-400 text-center leading-tight">
+        ⚠️ <strong>Aviso legal:</strong> Esta aplicación ofrece recomendaciones nutricionales y cálculos orientativos. No reemplaza la valoración de un profesional de la salud o nutriólogo certificado. El uso de esta herramienta es responsabilidad exclusiva del usuario.
+      </div>
+    </div>
+  </div>
+
+  <!-- Sistema Principal NutriFit -->
+  <div x-show="!cargandoAuth && user" x-cloak class="min-h-screen flex flex-col md:flex-row pb-16 md:pb-0">
+    
+    <!-- Barra de Menú Lateral -->
+    <div :class="darkMode ? 'bg-gray-800 border-r border-gray-700' : 'bg-emerald-600'" class="md:w-20 flex md:flex-col items-center justify-between p-3 md:py-6 flex-shrink-0 shadow-md transition-colors duration-200">
+      <div class="flex md:flex-col items-center gap-2 md:gap-4 w-full justify-between md:justify-start">
+        <a href="#" class="h-10 w-10 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center font-bold text-lg shadow">
+          🍃
+        </a>
+        <div class="flex md:flex-col gap-2">
+          <button @click="pestanaActiva = 'plan'" :class="pestanaActiva === 'plan' ? 'bg-emerald-900 text-white ring-2 ring-white' : 'bg-emerald-700 text-white hover:bg-emerald-800'" class="h-10 w-10 rounded-xl flex items-center justify-center shadow transition" title="Generador de Plan">
+            📋
+          </button>
+          <button @click="pestanaActiva = 'progreso'" :class="pestanaActiva === 'progreso' ? 'bg-emerald-900 text-white ring-2 ring-white' : 'bg-emerald-700 text-white hover:bg-emerald-800'" class="h-10 w-10 rounded-xl flex items-center justify-center shadow transition" title="Registro de Progreso">
+            📈
+          </button>
+          <button @click="toggleDarkMode()" class="h-10 w-10 rounded-xl bg-yellow-400 text-gray-900 flex items-center justify-center shadow hover:bg-yellow-500 transition" :title="darkMode ? 'Modo Claro' : 'Modo Oscuro'">
+            <span x-text="darkMode ? '☀️' : '🌙'"></span>
+          </button>
+        </div>
+      </div>
+
+      <button @click="cerrarSesion()" class="h-10 w-10 rounded-xl bg-red-500 text-white flex items-center justify-center shadow hover:bg-red-600 transition" title="Cerrar Sesión">
+        🚪
+      </button>
+    </div>
+
+    <!-- PESTAÑA 1: CALCULADORA Y MENÚ NUTRICIONAL -->
+    <div x-show="pestanaActiva === 'plan'" class="flex-grow p-4 md:p-6 overflow-x-hidden w-full max-w-6xl mx-auto space-y-6">
+      
+      <!-- ENCABEZADO Y ACCIONES -->
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 class="text-2xl font-black">Plan Nutricional Personalizado</h1>
+          <p class="text-xs text-gray-400" x-text="'Bienvenido, ' + (user ? user.email : '')"></p>
+        </div>
+        <button @click="imprimirPlan()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow">
+          🖨️ Imprimir / PDF
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- PERFIL DEL PACIENTE -->
-        <section class="bg-white p-6 rounded-lg shadow-md lg:col-span-1 print-shadow-none">
-            <h2 class="text-lg font-bold text-gray-700 mb-4 border-b pb-2"><i class="fa-solid fa-user"></i> Perfil del Paciente</h2>
-            
-            <form id="nutritionForm" class="space-y-4 no-print">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium">Edad (años)</label>
-                        <input type="number" id="edad" value="25" required class="w-full border p-2 rounded mt-1">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium">Sexo</label>
-                        <select id="sexo" class="w-full border p-2 rounded mt-1">
-                            <option value="M">Hombre</option>
-                            <option value="F">Mujer</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium">Peso (kg)</label>
-                        <input type="number" step="0.1" id="peso" value="70" required class="w-full border p-2 rounded mt-1">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium">Estatura (cm)</label>
-                        <input type="number" id="estatura" value="173" required class="w-full border p-2 rounded mt-1">
-                    </div>
-                </div>
+        <!-- PERFIL PACIENTE (FORMULARIO) -->
+        <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm h-fit">
+          <h2 class="text-base font-bold mb-3 border-b pb-2 flex items-center gap-2">
+            👤 Datos Fisiológicos
+          </h2>
 
-                <div>
-                    <label class="block text-sm font-medium">Nivel de Actividad</label>
-                    <select id="actividad" class="w-full border p-2 rounded mt-1">
-                        <option value="1.2">Sedentario (Poco o nulo ejercicio)</option>
-                        <option value="1.375">Ligero (Ejercicio 1-3 días/sem)</option>
-                        <option value="1.55" selected>Moderado (Ejercicio 3-5 días/sem)</option>
-                        <option value="1.725">Muy Activo (Ejercicio 6-7 días/sem)</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium">Objetivo Físico</label>
-                    <select id="objetivo" class="w-full border p-2 rounded mt-1">
-                        <option value="bajar">Bajar de Peso (Déficit)</option>
-                        <option value="tonificar">Tonificar / Recomposición</option>
-                        <option value="definir">Definir (Déficit agresivo)</option>
-                        <option value="masa">Ganar Masa Muscular (Superávit)</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded hover:bg-emerald-700 transition">
-                    Calcular y Generar Guía
-                </button>
-            </form>
-
-            <div id="printProfile" class="hidden print:block text-sm mt-4 space-y-1 border-t pt-2">
-                <p><strong>Paciente:</strong> <span id="lblEdad"></span> años, <span id="lblSexo"></span></p>
-                <p><strong>Peso / Talla:</strong> <span id="lblPeso"></span> kg | <span id="lblEstatura"></span> cm</p>
-                <p><strong>Objetivo:</strong> <span id="lblObjetivo" class="uppercase font-bold text-emerald-700"></span></p>
-            </div>
-        </section>
-
-        <!-- RESULTADOS DETALLADOS -->
-        <section class="lg:col-span-2 space-y-6 hidden" id="resultsContainer">
-            
-            <!-- REQUERIMIENTO Y MACROS -->
-            <div class="bg-white p-6 rounded-lg shadow-md print-shadow-none">
-                <h2 class="text-xl font-bold text-gray-700 mb-4"><i class="fa-solid fa-fire text-amber-500"></i> Requerimiento Energético Diario</h2>
-                <div class="flex items-center justify-between mb-4">
-                    <div>
-                        <p class="text-sm text-gray-500">Calorías Totales Ajustadas</p>
-                        <p class="text-3xl font-black text-emerald-600" id="resCalorias">0 kcal</p>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-3 gap-4 text-center">
-                    <div class="bg-red-50 p-3 rounded border border-red-100">
-                        <p class="text-xs font-bold text-red-600 uppercase">Proteínas</p>
-                        <p class="text-lg font-bold" id="resProtes">0g</p>
-                    </div>
-                    <div class="bg-blue-50 p-3 rounded border border-blue-100">
-                        <p class="text-xs font-bold text-blue-600 uppercase">Carbohidratos</p>
-                        <p class="text-lg font-bold" id="resCarbos">0g</p>
-                    </div>
-                    <div class="bg-yellow-50 p-3 rounded border border-yellow-100">
-                        <p class="text-xs font-bold text-yellow-600 uppercase">Grasas</p>
-                        <p class="text-lg font-bold" id="resGrasas">0g</p>
-                    </div>
-                </div>
+          <form @submit.prevent="calcularPlan()" class="space-y-3 text-xs">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold mb-1">Edad (años)</label>
+                <input type="number" x-model="perfil.edad" required class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
+              </div>
+              <div>
+                <label class="block font-bold mb-1">Sexo</label>
+                <select x-model="perfil.sexo" class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
+                  <option value="M">Hombre</option>
+                  <option value="F">Mujer</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-bold mb-1">Peso (kg)</label>
+                <input type="number" step="0.1" x-model="perfil.peso" required class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
+              </div>
+              <div>
+                <label class="block font-bold mb-1">Estatura (cm)</label>
+                <input type="number" x-model="perfil.estatura" required class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
+              </div>
             </div>
 
-            <!-- DISTRIBUCIÓN SUGERIDA POR COMIDA (TABLA DINÁMICA) -->
-            <div class="bg-white p-6 rounded-lg shadow-md print-shadow-none">
-                <h2 class="text-xl font-bold text-gray-700 mb-2"><i class="fa-solid fa-table-cells mr-2 text-emerald-600"></i> Guía de Distribución Diaria por Comida</h2>
-                <p class="text-sm text-gray-500 mb-4">Cantidades sugeridas de alimento real para dividir tus gramos diarios de forma equilibrada:</p>
-                
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left text-gray-600 border">
-                        <thead class="text-xs text-gray-700 uppercase bg-emerald-50 border-b">
-                            <tr>
-                                <th class="px-3 py-2 border-r">Comida</th>
-                                <th class="px-3 py-2 border-r text-red-600">Proteína (Cocida)</th>
-                                <th class="px-3 py-2 border-r text-amber-700">Lácteos</th>
-                                <th class="px-3 py-2 border-r text-green-700">Verduras</th>
-                                <th class="px-3 py-2 border-r text-blue-600">Carbohidratos</th>
-                                <th class="px-3 py-2 border-r text-purple-600">Frutas</th>
-                                <th class="px-3 py-2 text-yellow-600">Grasas</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tablaDistribucion" class="divide-y">
-                            <!-- Inyectado por JS -->
-                        </tbody>
-                    </table>
+            <div>
+              <label class="block font-bold mb-1">Nivel de Actividad</label>
+              <select x-model="perfil.actividad" class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
+                <option value="1.2">Sedentario (Poco ejercicio)</option>
+                <option value="1.375">Ligero (1-3 días/sem)</option>
+                <option value="1.55">Moderado (3-5 días/sem)</option>
+                <option value="1.725">Muy Activo (6-7 días/sem)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block font-bold mb-1">Objetivo Físico</label>
+              <select x-model="perfil.objetivo" class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
+                <option value="bajar">Bajar de Peso (Déficit)</option>
+                <option value="tonificar">Tonificar / Recomposición</option>
+                <option value="definir">Definir (Déficit agresivo)</option>
+                <option value="masa">Ganar Masa Muscular (Superávit)</option>
+              </select>
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition mt-2">
+              🔥 Calcular Plan
+            </button>
+          </form>
+        </div>
+
+        <!-- RESULTADOS Y GUÍA POR COMIDA -->
+        <div class="lg:col-span-2 space-y-6">
+          
+          <template x-if="planCalculado">
+            <div class="space-y-6">
+              <!-- TARJETA CALORÍAS -->
+              <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm">
+                <h2 class="text-sm font-bold uppercase text-gray-400 mb-2">Requerimiento Energético Diario:</h2>
+                <p class="text-3xl font-black text-emerald-500" x-text="planCalculado.calorias + ' kcal/día'"></p>
+
+                <div class="grid grid-cols-3 gap-3 mt-4 text-center text-xs">
+                  <div class="bg-red-900/30 border border-red-700 p-2.5 rounded-xl">
+                    <p class="font-bold text-red-400">Proteínas</p>
+                    <p class="text-lg font-black" x-text="planCalculado.proteinas + ' g'"></p>
+                  </div>
+                  <div class="bg-blue-900/30 border border-blue-700 p-2.5 rounded-xl">
+                    <p class="font-bold text-blue-400">Carbohidratos</p>
+                    <p class="text-lg font-black" x-text="planCalculado.carbos + ' g'"></p>
+                  </div>
+                  <div class="bg-yellow-900/30 border border-yellow-700 p-2.5 rounded-xl">
+                    <p class="font-bold text-yellow-400">Grasas</p>
+                    <p class="text-lg font-black" x-text="planCalculado.grasas + ' g'"></p>
+                  </div>
                 </div>
-            </div>
+              </div>
 
-            <!-- EJEMPLOS DE COMBINACIONES PRACTICAS -->
-            <div class="bg-white p-6 rounded-lg shadow-md print-shadow-none space-y-4">
-                <h2 class="text-xl font-bold text-gray-700 border-b pb-2"><i class="fa-solid fa-utensils text-emerald-600 mr-2"></i> Ejemplo de Menú Armado</h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="ejemplosComidas">
-                    <!-- Inyectado por JS -->
+              <!-- TABLA DE DISTRIBUCIÓN POR COMIDA -->
+              <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm overflow-x-auto">
+                <h3 class="text-sm font-bold mb-3 flex items-center gap-2">
+                  📊 Distribución Sugerida por Comida
+                </h3>
+                <table class="w-full text-xs text-left">
+                  <thead :class="darkMode ? 'bg-gray-700 text-gray-300' : 'bg-emerald-50 text-gray-700'" class="font-bold">
+                    <tr>
+                      <th class="p-2">Comida</th>
+                      <th class="p-2 text-red-400">Proteína (Cocida)</th>
+                      <th class="p-2 text-amber-500">Lácteos</th>
+                      <th class="p-2 text-green-400">Verduras</th>
+                      <th class="p-2 text-blue-400">Carbohidratos</th>
+                      <th class="p-2 text-purple-400">Frutas</th>
+                      <th class="p-2 text-yellow-400">Grasas</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-700">
+                    <tr>
+                      <td class="p-2 font-bold text-emerald-400">🥣 Desayuno</td>
+                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.desayunoProt + ' g'"></td>
+                      <td class="p-2">100 g</td>
+                      <td class="p-2">50 g</td>
+                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.desayunoCarb + ' porc.'"></td>
+                      <td class="p-2">1 pieza</td>
+                      <td class="p-2">1 porc.</td>
+                    </tr>
+                    <tr>
+                      <td class="p-2 font-bold text-emerald-400">🍛 Comida</td>
+                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.comidaProt + ' g'"></td>
+                      <td class="p-2">50 g</td>
+                      <td class="p-2">100 g</td>
+                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.comidaCarb + ' porc.'"></td>
+                      <td class="p-2">1 pieza</td>
+                      <td class="p-2">1 porc.</td>
+                    </tr>
+                    <tr>
+                      <td class="p-2 font-bold text-emerald-400">🌮 Cena</td>
+                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.cenaProt + ' g'"></td>
+                      <td class="p-2">100 g</td>
+                      <td class="p-2">50 g</td>
+                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.cenaCarb + ' porc.'"></td>
+                      <td class="p-2">1 pieza</td>
+                      <td class="p-2">1 porc.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- EJEMPLOS DE COMIDAS -->
+              <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm">
+                <h3 class="text-sm font-bold mb-3">🍽️ Ejemplos de Menú Armado</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div class="p-3 rounded-xl border border-emerald-700/50 bg-emerald-900/10">
+                    <p class="font-bold text-emerald-400 mb-1">🥣 Desayuno</p>
+                    <p class="text-gray-300">Quesadillas (2 tortillas de maíz + 100g de queso panela + espinacas) + 1 plátano + té o café.</p>
+                  </div>
+                  <div class="p-3 rounded-xl border border-emerald-700/50 bg-emerald-900/10">
+                    <p class="font-bold text-emerald-400 mb-1">🍛 Comida</p>
+                    <p class="text-gray-300">Pechuga de pollo a la plancha + 1/2 taza de arroz + 1/2 taza frijoles + ensalada de brócoli + 1 manzana.</p>
+                  </div>
+                  <div class="p-3 rounded-xl border border-emerald-700/50 bg-emerald-900/10">
+                    <p class="font-bold text-emerald-400 mb-1">🌮 Cena</p>
+                    <p class="text-gray-300">Tostadas de requesón (100g) con nopales guisados + 1/3 taza de lentejas + 1 taza de papaya.</p>
+                  </div>
                 </div>
+              </div>
+
             </div>
+          </template>
 
-            <!-- LISTA GENERAL DE ALIMENTOS Y PORCIONES -->
-            <div class="bg-white p-6 rounded-lg shadow-md print-shadow-none">
-                <h2 class="text-xl font-bold text-gray-700 mb-4"><i class="fa-solid fa-basket-shopping text-emerald-600 mr-2"></i> Catálogo de Alimentos Permitidos por Grupo</h2>
-                <div class="space-y-4" id="catalogoAlimentos">
-                    <!-- Inyectado por JS -->
-                </div>
+          <template x-if="!planCalculado">
+            <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-8 rounded-2xl border text-center text-gray-500 text-sm">
+              👈 Ingresa tus datos a la izquierda y presiona <strong>Calcular Plan</strong> para ver tu requerimiento personalizado.
             </div>
+          </template>
 
-            <!-- TIPS FINALES -->
-            <div class="bg-emerald-50 border border-emerald-200 p-5 rounded-lg text-sm space-y-2 print-shadow-none">
-                <h3 class="font-bold text-emerald-800 text-base"><i class="fa-solid fa-circle-check mr-2"></i> Consejos Clave para tu Plan</h3>
-                <ul class="list-disc list-inside space-y-1 text-emerald-900">
-                    <td><strong>Hidratación:</strong> Consume un mínimo de 2 a 3 litros de agua natural al día.</td>
-                    <td><strong>Prioriza cocciones saludables:</strong> Prepara tus alimentos asados, al vapor, horneados o salteados con mínimo aceite.</td>
-                    <td><strong>Variación diaria:</strong> Usa las listas anteriores como un "menú abierto" combinando los equivalentes según lo que tengas disponible.</td>
-                </ul>
+        </div>
+
+      </div>
+
+      <!-- DESLINDE DE RESPONSABILIDAD EN PIE DE PÁGINA -->
+      <div class="mt-8 border-t pt-4 text-[11px] text-gray-400 text-center leading-relaxed">
+        ⚠️ <strong>Aviso legal y de responsabilidad:</strong> Esta plataforma utiliza ecuaciones matemáticas estándar (Mifflin-St Jeor) para ofrecer estimaciones generales sobre requerimientos calóricos y de macronutrientes. <u>No somos nutriólogos ni profesionales de la salud</u>. La información, menús y distribución de alimentos provistos se ofrecen únicamente con fines educativos y de recomendación orientativa. El uso de esta aplicación se realiza bajo la propia responsabilidad y riesgo de cada usuario. Se recomienda encarecidamente consultar con un médico o nutriólogo colegiado antes de iniciar cualquier plan de alimentación o cambio en el estilo de vida.
+      </div>
+
+    </div>
+
+    <!-- PESTAÑA 2: SEGUIMIENTO DE PROGRESO Y REGISTROS -->
+    <div x-show="pestanaActiva === 'progreso'" class="flex-grow p-4 md:p-6 overflow-x-hidden w-full max-w-4xl mx-auto space-y-6">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-2xl font-black">📈 Control de Progreso</h1>
+          <p class="text-xs text-gray-400">Registra tus pesajes y sigue tus avances periódicos</p>
+        </div>
+      </div>
+
+      <!-- FORMULARIO NUEVO REGISTRO -->
+      <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm">
+        <h2 class="text-sm font-bold mb-3 text-emerald-500">+ Agregar Nuevo Pesaje</h2>
+        <form @submit.prevent="guardarProgreso()" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+          <div>
+            <label class="block font-bold mb-1">Peso (kg):</label>
+            <input type="number" step="0.1" x-model="nuevoPesoProgreso" required class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
+          </div>
+          <div>
+            <label class="block font-bold mb-1">% Grasa (Opcional):</label>
+            <input type="number" step="0.1" x-model="nuevaGrasaProgreso" placeholder="ej. 18.5" class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
+          </div>
+          <div class="sm:col-span-2 flex items-end">
+            <button type="submit" class="w-full bg-emerald-600 text-white font-bold p-2.5 rounded-lg hover:bg-emerald-700 transition">
+              Guardar Registro
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- HISTORIAL DE PESAJES -->
+      <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm space-y-3">
+        <h2 class="text-sm font-bold">Historial de Registros</h2>
+        
+        <div x-show="historialProgreso.length === 0" class="text-center py-6 text-gray-500 text-xs">
+          Aún no tienes registros guardados. ¡Agrega tu primer peso arriba!
+        </div>
+
+        <div x-show="historialProgreso.length > 0" class="space-y-2">
+          <template x-for="(reg, index) in historialProgreso" :key="index">
+            <div :class="darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'" class="p-3 rounded-xl border flex justify-between items-center text-xs">
+              <div>
+                <p class="font-bold text-emerald-400" x-text="reg.peso + ' kg'"></p>
+                <p class="text-[10px] text-gray-400" x-text="reg.fechaTexto"></p>
+              </div>
+              <div class="text-right">
+                <span x-show="reg.grasa" class="bg-indigo-900 text-indigo-200 text-[10px] px-2 py-0.5 rounded font-bold" x-text="reg.grasa + '% grasa'"></span>
+              </div>
             </div>
+          </template>
+        </div>
+      </div>
+    </div>
 
-        </section>
-    </main>
+  </div>
 
-    <script src="js/script.js"></script>
+  <!-- SECCIÓN OCULTA PARA IMPRESIÓN / PDF -->
+  <div id="plan-impresion" style="display: none;">
+    <h1 style="text-align: center; font-size: 20px; font-weight: bold;">NutriFit Planner - Plan Personalizado</h1>
+    <p style="text-align: center; font-size: 12px;" x-text="'Fecha: ' + new Date().toLocaleDateString()"></p>
+    <hr style="margin: 15px 0;">
+    <template x-if="planCalculado">
+      <div>
+        <p><strong>Requerimiento Calórico:</strong> <span x-text="planCalculado.calorias + ' kcal'"></span></p>
+        <p><strong>Proteínas:</strong> <span x-text="planCalculado.proteinas + 'g'"></span> | <strong>Carbohidratos:</strong> <span x-text="planCalculado.carbos + 'g'"></span> | <strong>Grasas:</strong> <span x-text="planCalculado.grasas + 'g'"></span></p>
+        <br>
+        <h3>Distribución Sugerida:</h3>
+        <ul>
+          <li x-text="'Desayuno: ' + planCalculado.distribucion.desayunoProt + 'g proteína / ' + planCalculado.distribucion.desayunoCarb + ' porc. carbos'"></li>
+          <li x-text="'Comida: ' + planCalculado.distribucion.comidaProt + 'g proteína / ' + planCalculado.distribucion.comidaCarb + ' porc. carbos'"></li>
+          <li x-text="'Cena: ' + planCalculado.distribucion.cenaProt + 'g proteína / ' + planCalculado.distribucion.cenaCarb + ' porc. carbos'"></li>
+        </ul>
+      </div>
+    </template>
+    <br><br>
+    <p style="font-size: 9px; text-align: center; color: #666;">Aviso: Documento generado de forma automatizada. No sustituye la prescripción de un profesional de la salud.</p>
+  </div>
+
 </body>
 </html>
