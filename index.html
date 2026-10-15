@@ -4,9 +4,8 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>NutriFit Planner - Planes Nutricionales y Progreso</title>
+  <title>NutriFit Planner - Planes Nutricionales Dinámicos</title>
   
-  <!-- Tailwind CSS por CDN -->
   <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -35,7 +34,7 @@
 </head>
 <body :class="darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-100 text-gray-800'" class="min-h-screen antialiased transition-colors duration-200" x-data="initNutriApp()" x-init="initDatabase()">
 
-  <!-- Pantalla de Carga Inicial -->
+  <!-- Pantalla de Carga -->
   <div x-show="cargandoAuth" class="min-h-screen flex items-center justify-center font-bold text-gray-500 text-sm">
     Cargando sistema de Nutrición...
   </div>
@@ -46,7 +45,7 @@
       <div class="text-center mb-6">
         <span class="text-5xl">🥗</span>
         <h1 class="text-2xl font-black mt-2">NutriFit Planner</h1>
-        <p class="text-xs text-gray-500" x-text="modoRegistro ? 'Crea tu cuenta para guardar tu progreso' : 'Ingresa a tu portal nutricional'"></p>
+        <p class="text-xs text-gray-500" x-text="modoRegistro ? 'Crea tu cuenta para guardar tus planes y progreso' : 'Ingresa a tu portal nutricional'"></p>
       </div>
 
       <form @submit.prevent="procesarAuth()" class="space-y-4">
@@ -68,17 +67,16 @@
         </button>
       </div>
 
-      <!-- DESLINDE DE RESPONSABILIDAD EN LOGIN -->
       <div class="mt-6 border-t pt-3 text-[10px] text-gray-400 text-center leading-tight">
-        ⚠️ <strong>Aviso legal:</strong> Esta aplicación ofrece recomendaciones nutricionales y cálculos orientativos. No reemplaza la valoración de un profesional de la salud o nutriólogo certificado. El uso de esta herramienta es responsabilidad exclusiva del usuario.
+        ⚠️ <strong>Aviso legal:</strong> Esta aplicación no es un nutriólogo y ofrece recomendaciones algorítmicas de orientación. El uso es bajo tu propia responsabilidad.
       </div>
     </div>
   </div>
 
-  <!-- Sistema Principal NutriFit -->
+  <!-- Sistema Principal -->
   <div x-show="!cargandoAuth && user" x-cloak class="min-h-screen flex flex-col md:flex-row pb-16 md:pb-0">
     
-    <!-- Barra de Menú Lateral -->
+    <!-- Menú Lateral -->
     <div :class="darkMode ? 'bg-gray-800 border-r border-gray-700' : 'bg-emerald-600'" class="md:w-20 flex md:flex-col items-center justify-between p-3 md:py-6 flex-shrink-0 shadow-md transition-colors duration-200">
       <div class="flex md:flex-col items-center gap-2 md:gap-4 w-full justify-between md:justify-start">
         <a href="#" class="h-10 w-10 bg-emerald-50 text-emerald-700 rounded-full flex items-center justify-center font-bold text-lg shadow">
@@ -102,29 +100,33 @@
       </button>
     </div>
 
-    <!-- PESTAÑA 1: CALCULADORA Y MENÚ NUTRICIONAL -->
+    <!-- PESTAÑA 1: CALCULADORA NUTRICIONAL Y SELECCIÓN LIBRE -->
     <div x-show="pestanaActiva === 'plan'" class="flex-grow p-4 md:p-6 overflow-x-hidden w-full max-w-6xl mx-auto space-y-6">
       
-      <!-- ENCABEZADO Y ACCIONES -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 class="text-2xl font-black">Plan Nutricional Personalizado</h1>
-          <p class="text-xs text-gray-400" x-text="'Bienvenido, ' + (user ? user.email : '')"></p>
+          <h1 class="text-2xl font-black">Plan Personalizado de Nutrición</h1>
+          <p class="text-xs text-gray-400" x-text="'Usuario: ' + (user ? user.email : '')"></p>
         </div>
         <button @click="imprimirPlan()" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition shadow">
-          🖨️ Imprimir / PDF
+          🖨️ Imprimir Plan
         </button>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- PERFIL PACIENTE (FORMULARIO) -->
+        <!-- FORMULARIO PERFIL -->
         <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm h-fit">
           <h2 class="text-base font-bold mb-3 border-b pb-2 flex items-center gap-2">
-            👤 Datos Fisiológicos
+            👤 Datos del Usuario
           </h2>
 
           <form @submit.prevent="calcularPlan()" class="space-y-3 text-xs">
+            <div>
+              <label class="block font-bold mb-1">Nombre / Identificador</label>
+              <input type="text" x-model="perfil.nombre" required placeholder="Ej. Marco / Andrea" class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
+            </div>
+
             <div class="grid grid-cols-2 gap-3">
               <div>
                 <label class="block font-bold mb-1">Edad (años)</label>
@@ -150,7 +152,7 @@
             <div>
               <label class="block font-bold mb-1">Nivel de Actividad</label>
               <select x-model="perfil.actividad" class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
-                <option value="1.2">Sedentario (Poco ejercicio)</option>
+                <option value="1.2">Sedentario (Poco o nada)</option>
                 <option value="1.375">Ligero (1-3 días/sem)</option>
                 <option value="1.55">Moderado (3-5 días/sem)</option>
                 <option value="1.725">Muy Activo (6-7 días/sem)</option>
@@ -162,107 +164,176 @@
               <select x-model="perfil.objetivo" class="w-full p-2 border rounded-lg" :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50'">
                 <option value="bajar">Bajar de Peso (Déficit)</option>
                 <option value="tonificar">Tonificar / Recomposición</option>
-                <option value="definir">Definir (Déficit agresivo)</option>
+                <option value="definir">Definir (Déficit alto)</option>
                 <option value="masa">Ganar Masa Muscular (Superávit)</option>
               </select>
             </div>
 
             <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition mt-2">
-              🔥 Calcular Plan
+              🔥 Generar Guía Proporcional
             </button>
           </form>
         </div>
 
-        <!-- RESULTADOS Y GUÍA POR COMIDA -->
+        <!-- RESULTADOS Y GUÍA PERSONALIZADA -->
         <div class="lg:col-span-2 space-y-6">
           
           <template x-if="planCalculado">
             <div class="space-y-6">
-              <!-- TARJETA CALORÍAS -->
+              
+              <!-- RESUMEN DE REQUERIMIENTO -->
               <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm">
-                <h2 class="text-sm font-bold uppercase text-gray-400 mb-2">Requerimiento Energético Diario:</h2>
-                <p class="text-3xl font-black text-emerald-500" x-text="planCalculado.calorias + ' kcal/día'"></p>
+                <div class="flex justify-between items-center border-b pb-2 mb-3">
+                  <h2 class="text-sm font-bold uppercase text-emerald-500" x-text="'Plan para: ' + planCalculado.nombre"></h2>
+                  <span class="text-xs bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded font-bold uppercase" x-text="perfil.objetivo"></span>
+                </div>
 
-                <div class="grid grid-cols-3 gap-3 mt-4 text-center text-xs">
-                  <div class="bg-red-900/30 border border-red-700 p-2.5 rounded-xl">
+                <div class="flex items-center justify-between mb-3">
+                  <p class="text-xs text-gray-400">Gasto diario ajustado:</p>
+                  <p class="text-2xl font-black text-emerald-400" x-text="planCalculado.calorias + ' kcal'"></p>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                  <div class="bg-red-900/30 border border-red-700 p-2 rounded-xl">
                     <p class="font-bold text-red-400">Proteínas</p>
-                    <p class="text-lg font-black" x-text="planCalculado.proteinas + ' g'"></p>
+                    <p class="text-base font-black" x-text="planCalculado.proteinas + ' g'"></p>
                   </div>
-                  <div class="bg-blue-900/30 border border-blue-700 p-2.5 rounded-xl">
+                  <div class="bg-blue-900/30 border border-blue-700 p-2 rounded-xl">
                     <p class="font-bold text-blue-400">Carbohidratos</p>
-                    <p class="text-lg font-black" x-text="planCalculado.carbos + ' g'"></p>
+                    <p class="text-base font-black" x-text="planCalculado.carbos + ' g'"></p>
                   </div>
-                  <div class="bg-yellow-900/30 border border-yellow-700 p-2.5 rounded-xl">
+                  <div class="bg-yellow-900/30 border border-yellow-700 p-2 rounded-xl">
                     <p class="font-bold text-yellow-400">Grasas</p>
-                    <p class="text-lg font-black" x-text="planCalculado.grasas + ' g'"></p>
+                    <p class="text-base font-black" x-text="planCalculado.grasas + ' g'"></p>
                   </div>
                 </div>
               </div>
 
-              <!-- TABLA DE DISTRIBUCIÓN POR COMIDA -->
+              <!-- TABLA RECALCULADA POR COMIDA -->
               <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm overflow-x-auto">
-                <h3 class="text-sm font-bold mb-3 flex items-center gap-2">
-                  📊 Distribución Sugerida por Comida
-                </h3>
-                <table class="w-full text-xs text-left">
+                <h3 class="text-sm font-bold mb-2 text-emerald-400">📊 GUÍA DE DISTRIBUCIÓN DIARIA (Ajustada a tu necesidad)</h3>
+                <p class="text-xs text-gray-400 mb-3">Los gramos y porciones se dividieron matemáticamente según tus metas:</p>
+                
+                <table class="w-full text-xs text-left border-collapse">
                   <thead :class="darkMode ? 'bg-gray-700 text-gray-300' : 'bg-emerald-50 text-gray-700'" class="font-bold">
                     <tr>
-                      <th class="p-2">Comida</th>
-                      <th class="p-2 text-red-400">Proteína (Cocida)</th>
-                      <th class="p-2 text-amber-500">Lácteos</th>
-                      <th class="p-2 text-green-400">Verduras</th>
-                      <th class="p-2 text-blue-400">Carbohidratos</th>
-                      <th class="p-2 text-purple-400">Frutas</th>
-                      <th class="p-2 text-yellow-400">Grasas</th>
+                      <th class="p-2 border border-gray-600">Comida</th>
+                      <th class="p-2 border border-gray-600 text-red-400">Proteína</th>
+                      <th class="p-2 border border-gray-600 text-amber-500">Lácteos</th>
+                      <th class="p-2 border border-gray-600 text-green-400">Verduras</th>
+                      <th class="p-2 border border-gray-600 text-blue-400">Carbohidratos</th>
+                      <th class="p-2 border border-gray-600 text-purple-400">Frutas</th>
+                      <th class="p-2 border border-gray-600 text-yellow-400">Grasas</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-gray-700">
-                    <tr>
-                      <td class="p-2 font-bold text-emerald-400">🥣 Desayuno</td>
-                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.desayunoProt + ' g'"></td>
-                      <td class="p-2">100 g</td>
-                      <td class="p-2">50 g</td>
-                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.desayunoCarb + ' porc.'"></td>
-                      <td class="p-2">1 pieza</td>
-                      <td class="p-2">1 porc.</td>
+                  <tbody>
+                    <tr class="border-b border-gray-700">
+                      <td class="p-2 font-bold text-emerald-400">Desayuno</td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.desayunoProt + ' g'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.desayunoLacteo + ' g'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.desayunoVerd + ' g'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.desayunoCarb + ' porc.'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.desayunoFruta + ' porc.'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.desayunoGrasa + ' porc.'"></td>
+                    </tr>
+                    <tr class="border-b border-gray-700">
+                      <td class="p-2 font-bold text-emerald-400">Comida</td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.comidaProt + ' g'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.comidaLacteo + ' g'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.comidaVerd + ' g'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.comidaCarb + ' porc.'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.comidaFruta + ' porc.'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.comidaGrasa + ' porc.'"></td>
                     </tr>
                     <tr>
-                      <td class="p-2 font-bold text-emerald-400">🍛 Comida</td>
-                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.comidaProt + ' g'"></td>
-                      <td class="p-2">50 g</td>
-                      <td class="p-2">100 g</td>
-                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.comidaCarb + ' porc.'"></td>
-                      <td class="p-2">1 pieza</td>
-                      <td class="p-2">1 porc.</td>
-                    </tr>
-                    <tr>
-                      <td class="p-2 font-bold text-emerald-400">🌮 Cena</td>
-                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.cenaProt + ' g'"></td>
-                      <td class="p-2">100 g</td>
-                      <td class="p-2">50 g</td>
-                      <td class="p-2 font-bold" x-text="planCalculado.distribucion.cenaCarb + ' porc.'"></td>
-                      <td class="p-2">1 pieza</td>
-                      <td class="p-2">1 porc.</td>
+                      <td class="p-2 font-bold text-emerald-400">Cena</td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.cenaProt + ' g'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.cenaLacteo + ' g'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.cenaVerd + ' g'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.cenaCarb + ' porc.'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.cenaFruta + ' porc.'"></td>
+                      <td class="p-2 font-bold" x-text="planCalculado.dist.cenaGrasa + ' porc.'"></td>
                     </tr>
                   </tbody>
                 </table>
               </div>
 
-              <!-- EJEMPLOS DE COMIDAS -->
+              <!-- EJEMPLOS DINÁMICOS CON LAS OPCIONES Y EQUIVALENTES -->
+              <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm space-y-4">
+                <h3 class="text-sm font-bold border-b pb-2 text-emerald-400">🍽️ EJEMPLO DE COMBINACIONES PARA TU PLAN</h3>
+                
+                <div class="space-y-3 text-xs">
+                  <div class="p-3 rounded-xl border border-gray-700 bg-gray-900/40">
+                    <p class="font-bold text-emerald-400 text-sm mb-1">🥣 DESAYUNO</p>
+                    <p class="font-semibold text-gray-300">Elegir de tu catálogo:</p>
+                    <ul class="list-disc list-inside text-gray-400 space-y-0.5 mt-1">
+                      <li><strong>1 proteína:</strong> <span x-text="planCalculado.dist.desayunoProt + ' g de pollo desmenuzado, tofu o atún'"></span></li>
+                      <li><strong>1 lácteo:</strong> <span x-text="planCalculado.dist.desayunoLacteo + ' g de queso panela o yogurt griego'"></span></li>
+                      <li><strong>Carbohidratos:</strong> <span x-text="planCalculado.dist.desayunoCarb + ' porciones (ej. ' + planCalculado.dist.desayunoCarb + ' tortillas o rebanadas de pan integral)'"></span></li>
+                      <li><strong>Fruta:</strong> <span x-text="planCalculado.dist.desayunoFruta + ' porción (plátano, manzana o papaya)'"></span></li>
+                      <li><strong>Verdura:</strong> <span x-text="planCalculado.dist.desayunoVerd + ' g de espinacas, jitomate o nopales'"></span></li>
+                    </ul>
+                  </div>
+
+                  <div class="p-3 rounded-xl border border-gray-700 bg-gray-900/40">
+                    <p class="font-bold text-emerald-400 text-sm mb-1">🍛 COMIDA</p>
+                    <p class="font-semibold text-gray-300">Elegir de tu catálogo:</p>
+                    <ul class="list-disc list-inside text-gray-400 space-y-0.5 mt-1">
+                      <li><strong>1 proteína:</strong> <span x-text="planCalculado.dist.comidaProt + ' g de pechuga de pollo, salmón o res magra'"></span></li>
+                      <li><strong>1 lácteo:</strong> <span x-text="planCalculado.dist.comidaLacteo + ' g de queso rallado o aderezo de yogurt'"></span></li>
+                      <li><strong>Carbohidratos:</strong> <span x-text="planCalculado.dist.comidaCarb + ' porciones (ej. arroz cocido / frijoles / papa)'"></span></li>
+                      <li><strong>Fruta:</strong> <span x-text="planCalculado.dist.comidaFruta + ' porción (manzana, mango o fresas)'"></span></li>
+                      <li><strong>Verdura:</strong> <span x-text="planCalculado.dist.comidaVerd + ' g de brócoli, zanahoria o ensalada'"></span></li>
+                    </ul>
+                  </div>
+
+                  <div class="p-3 rounded-xl border border-gray-700 bg-gray-900/40">
+                    <p class="font-bold text-emerald-400 text-sm mb-1">🌮 CENA</p>
+                    <p class="font-semibold text-gray-300">Elegir de tu catálogo:</p>
+                    <ul class="list-disc list-inside text-gray-400 space-y-0.5 mt-1">
+                      <li><strong>1 proteína:</strong> <span x-text="planCalculado.dist.cenaProt + ' g de atún, soya o tofu'"></span></li>
+                      <li><strong>1 lácteo:</strong> <span x-text="planCalculado.dist.cenaLacteo + ' g de requesón o yogurt griego'"></span></li>
+                      <li><strong>Carbohidratos:</strong> <span x-text="planCalculado.dist.cenaCarb + ' porciones (tortilla, avena o lentejas)'"></span></li>
+                      <li><strong>Fruta:</strong> <span x-text="planCalculado.dist.cenaFruta + ' porción (papaya o fresas)'"></span></li>
+                      <li><strong>Verdura:</strong> <span x-text="planCalculado.dist.cenaVerd + ' g de calabaza, nopales o lechuga'"></span></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- LISTA COMPLETA DE ALIMENTOS PERMITIDOS -->
               <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm">
-                <h3 class="text-sm font-bold mb-3">🍽️ Ejemplos de Menú Armado</h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                  <div class="p-3 rounded-xl border border-emerald-700/50 bg-emerald-900/10">
-                    <p class="font-bold text-emerald-400 mb-1">🥣 Desayuno</p>
-                    <p class="text-gray-300">Quesadillas (2 tortillas de maíz + 100g de queso panela + espinacas) + 1 plátano + té o café.</p>
+                <h3 class="text-sm font-bold border-b pb-2 mb-3 text-emerald-400">🧩 LISTA DE ALIMENTOS POR GRUPO PARA ELEGIR LIBREMENTE</h3>
+                
+                <div class="space-y-4 text-xs">
+                  <div>
+                    <h4 class="font-bold text-red-400 uppercase">🥩 PROTEÍNAS (100 g cocido aprox. = 20–25 g de proteína)</h4>
+                    <p class="text-gray-300">Carnes magras (pollo, res, pavo), Pescados (salmón, atún, tilapia), Lácteos altos en proteína (panela, requesón, yogurt griego), Vegetales proteicos (soya, tofu, tempeh) y Leguminosas (lentejas, frijoles).</p>
                   </div>
-                  <div class="p-3 rounded-xl border border-emerald-700/50 bg-emerald-900/10">
-                    <p class="font-bold text-emerald-400 mb-1">🍛 Comida</p>
-                    <p class="text-gray-300">Pechuga de pollo a la plancha + 1/2 taza de arroz + 1/2 taza frijoles + ensalada de brócoli + 1 manzana.</p>
+
+                  <div>
+                    <h4 class="font-bold text-amber-500 uppercase">🧀 LÁCTEOS (50–100 g aprox.)</h4>
+                    <p class="text-gray-300">Queso panela, Requesón, Queso Oaxaca, Yogurt griego natural, Leche deslactosada o vegetal fortificada.</p>
                   </div>
-                  <div class="p-3 rounded-xl border border-emerald-700/50 bg-emerald-900/10">
-                    <p class="font-bold text-emerald-400 mb-1">🌮 Cena</p>
-                    <p class="text-gray-300">Tostadas de requesón (100g) con nopales guisados + 1/3 taza de lentejas + 1 taza de papaya.</p>
+
+                  <div>
+                    <h4 class="font-bold text-blue-400 uppercase">🌾 CARBOHIDRATOS COMPLEJOS (1 porción ≈ 20–25 g CH)</h4>
+                    <p class="text-gray-300">Tortillas de maíz (1 pz), Pan integral (1 rebanada), Avena cocida (½ taza), Arroz integral/blanco (½ taza), Pasta integral (½ taza), Papa/camote (½ taza), Legumbres (⅓ taza).</p>
+                  </div>
+
+                  <div>
+                    <h4 class="font-bold text-green-400 uppercase">🥦 VERDURAS (1 porción = 40 g crudo aprox.)</h4>
+                    <p class="text-gray-300">Espinaca, lechuga, brócoli, calabaza, zanahoria, jitomate, pepino, nopales.</p>
+                  </div>
+
+                  <div>
+                    <h4 class="font-bold text-purple-400 uppercase">🍎 FRUTAS (1 porción = 1 pieza o ½ taza)</h4>
+                    <p class="text-gray-300">Manzana, plátano, mango, fresas, papaya, piña, uvas.</p>
+                  </div>
+
+                  <div>
+                    <h4 class="font-bold text-yellow-400 uppercase">🥑 GRASAS SALUDABLES (1 porción ≈ 5–10 g grasa)</h4>
+                    <p class="text-gray-300">Aguacate (¼ pieza), Aceite de oliva (1 cdta), Nueces/almendras (10 g), Semillas de chía/linaza (1 cda).</p>
                   </div>
                 </div>
               </div>
@@ -272,7 +343,7 @@
 
           <template x-if="!planCalculado">
             <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-8 rounded-2xl border text-center text-gray-500 text-sm">
-              👈 Ingresa tus datos a la izquierda y presiona <strong>Calcular Plan</strong> para ver tu requerimiento personalizado.
+              👈 Ingresa tus datos en el formulario para generar tu tabla proporcional de alimentos.
             </div>
           </template>
 
@@ -280,25 +351,24 @@
 
       </div>
 
-      <!-- DESLINDE DE RESPONSABILIDAD EN PIE DE PÁGINA -->
-      <div class="mt-8 border-t pt-4 text-[11px] text-gray-400 text-center leading-relaxed">
-        ⚠️ <strong>Aviso legal y de responsabilidad:</strong> Esta plataforma utiliza ecuaciones matemáticas estándar (Mifflin-St Jeor) para ofrecer estimaciones generales sobre requerimientos calóricos y de macronutrientes. <u>No somos nutriólogos ni profesionales de la salud</u>. La información, menús y distribución de alimentos provistos se ofrecen únicamente con fines educativos y de recomendación orientativa. El uso de esta aplicación se realiza bajo la propia responsabilidad y riesgo de cada usuario. Se recomienda encarecidamente consultar con un médico o nutriólogo colegiado antes de iniciar cualquier plan de alimentación o cambio en el estilo de vida.
+      <!-- AVISO DE RESPONSABILIDAD LEGAL -->
+      <div class="mt-8 border-t pt-4 text-[10px] text-gray-400 text-center leading-relaxed">
+        ⚠️ <strong>Aviso Importante de Deslinde de Responsabilidad:</strong> Esta herramienta web no es un nutriólogo ni sustituye la atención, diagnóstico o tratamiento médico o nutricional profesional. Todos los cálculos son estimaciones algorítmicas basadas en fórmulas estándar. El usuario asume toda la responsabilidad y riesgo por el uso de la información proporcionada. Se recomienda consultar con un profesional de la salud antes de modificar su dieta.
       </div>
 
     </div>
 
-    <!-- PESTAÑA 2: SEGUIMIENTO DE PROGRESO Y REGISTROS -->
+    <!-- PESTAÑA 2: SEGUIMIENTO DE PROGRESO DE PESO -->
     <div x-show="pestanaActiva === 'progreso'" class="flex-grow p-4 md:p-6 overflow-x-hidden w-full max-w-4xl mx-auto space-y-6">
       <div class="flex justify-between items-center">
         <div>
           <h1 class="text-2xl font-black">📈 Control de Progreso</h1>
-          <p class="text-xs text-gray-400">Registra tus pesajes y sigue tus avances periódicos</p>
+          <p class="text-xs text-gray-400">Guarda tus pesajes periódicos y observa tus avances</p>
         </div>
       </div>
 
-      <!-- FORMULARIO NUEVO REGISTRO -->
       <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm">
-        <h2 class="text-sm font-bold mb-3 text-emerald-500">+ Agregar Nuevo Pesaje</h2>
+        <h2 class="text-sm font-bold mb-3 text-emerald-500">+ Registrar Nuevo Peso</h2>
         <form @submit.prevent="guardarProgreso()" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
           <div>
             <label class="block font-bold mb-1">Peso (kg):</label>
@@ -310,18 +380,17 @@
           </div>
           <div class="sm:col-span-2 flex items-end">
             <button type="submit" class="w-full bg-emerald-600 text-white font-bold p-2.5 rounded-lg hover:bg-emerald-700 transition">
-              Guardar Registro
+              Guardar en mi Historial
             </button>
           </div>
         </form>
       </div>
 
-      <!-- HISTORIAL DE PESAJES -->
       <div :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'" class="p-5 rounded-2xl border shadow-sm space-y-3">
         <h2 class="text-sm font-bold">Historial de Registros</h2>
         
         <div x-show="historialProgreso.length === 0" class="text-center py-6 text-gray-500 text-xs">
-          Aún no tienes registros guardados. ¡Agrega tu primer peso arriba!
+          Sin registros previos. ¡Empieza guardando tu peso actual!
         </div>
 
         <div x-show="historialProgreso.length > 0" class="space-y-2">
@@ -342,26 +411,20 @@
 
   </div>
 
-  <!-- SECCIÓN OCULTA PARA IMPRESIÓN / PDF -->
+  <!-- DOCUMENTO PARA IMPRESIÓN -->
   <div id="plan-impresion" style="display: none;">
-    <h1 style="text-align: center; font-size: 20px; font-weight: bold;">NutriFit Planner - Plan Personalizado</h1>
-    <p style="text-align: center; font-size: 12px;" x-text="'Fecha: ' + new Date().toLocaleDateString()"></p>
-    <hr style="margin: 15px 0;">
+    <h1 style="text-align: center; font-size: 18px; font-weight: bold;">NutriFit Planner - Plan Personalizado</h1>
     <template x-if="planCalculado">
       <div>
-        <p><strong>Requerimiento Calórico:</strong> <span x-text="planCalculado.calorias + ' kcal'"></span></p>
-        <p><strong>Proteínas:</strong> <span x-text="planCalculado.proteinas + 'g'"></span> | <strong>Carbohidratos:</strong> <span x-text="planCalculado.carbos + 'g'"></span> | <strong>Grasas:</strong> <span x-text="planCalculado.grasas + 'g'"></span></p>
-        <br>
-        <h3>Distribución Sugerida:</h3>
-        <ul>
-          <li x-text="'Desayuno: ' + planCalculado.distribucion.desayunoProt + 'g proteína / ' + planCalculado.distribucion.desayunoCarb + ' porc. carbos'"></li>
-          <li x-text="'Comida: ' + planCalculado.distribucion.comidaProt + 'g proteína / ' + planCalculado.distribucion.comidaCarb + ' porc. carbos'"></li>
-          <li x-text="'Cena: ' + planCalculado.distribucion.cenaProt + 'g proteína / ' + planCalculado.distribucion.cenaCarb + ' porc. carbos'"></li>
-        </ul>
+        <p><strong>Paciente:</strong> <span x-text="planCalculado.nombre"></span></p>
+        <p><strong>Meta Diaria:</strong> <span x-text="planCalculado.calorias + ' kcal'"></span> | Proteínas: <span x-text="planCalculado.proteinas + 'g'"></span>, Carbos: <span x-text="planCalculado.carbos + 'g'"></span>, Grasas: <span x-text="planCalculado.grasas + 'g'"></span></p>
+        <hr style="margin: 10px 0;">
+        <h3>Distribución Diaria por Comida:</h3>
+        <p><strong>Desayuno:</strong> <span x-text="planCalculado.dist.desayunoProt + 'g Proteína, ' + planCalculado.dist.desayunoLacteo + 'g Lácteo, ' + planCalculado.dist.desayunoCarb + ' porc. Carbos, ' + planCalculado.dist.desayunoVerd + 'g Verdura'"></span></p>
+        <p><strong>Comida:</strong> <span x-text="planCalculado.dist.comidaProt + 'g Proteína, ' + planCalculado.dist.comidaLacteo + 'g Lácteo, ' + planCalculado.dist.comidaCarb + ' porc. Carbos, ' + planCalculado.dist.comidaVerd + 'g Verdura'"></span></p>
+        <p><strong>Cena:</strong> <span x-text="planCalculado.dist.cenaProt + 'g Proteína, ' + planCalculado.dist.cenaLacteo + 'g Lácteo, ' + planCalculado.dist.cenaCarb + ' porc. Carbos, ' + planCalculado.dist.cenaVerd + 'g Verdura'"></span></p>
       </div>
     </template>
-    <br><br>
-    <p style="font-size: 9px; text-align: center; color: #666;">Aviso: Documento generado de forma automatizada. No sustituye la prescripción de un profesional de la salud.</p>
   </div>
 
 </body>
