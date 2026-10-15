@@ -1,4 +1,4 @@
-// js/script.js - NutriFit Planner con Firebase Auth y Firestore Progress Tracker
+// js/script.js - Motor Dinámico con Cálculo Proporcional y Firebase
 
 function initNutriApp() {
   return {
@@ -8,12 +8,12 @@ function initNutriApp() {
     emailAuth: '',
     passAuth: '',
 
-    pestanaActiva: 'plan', // 'plan' o 'progreso'
+    pestanaActiva: 'plan',
     darkMode: true,
     userStoreId: localStorage.getItem('nutri_user_id') || 'nutri_default',
 
-    // Formulario de perfil del usuario
     perfil: {
+      nombre: 'Marco',
       edad: 25,
       sexo: 'M',
       peso: 70,
@@ -24,7 +24,6 @@ function initNutriApp() {
 
     planCalculado: null,
 
-    // Historial de pesajes
     historialProgreso: [],
     nuevoPesoProgreso: '',
     nuevaGrasaProgreso: '',
@@ -90,7 +89,7 @@ function initNutriApp() {
           })
           .catch(err => {
             if (err.code === 'auth/email-already-in-use') {
-              alert("Este correo ya está registrado. Cambiando a Iniciar Sesión...");
+              alert("Este correo ya está registrado. Inicia sesión.");
               this.modoRegistro = false;
             } else {
               alert("Error al registrar: " + err.message);
@@ -122,7 +121,6 @@ function initNutriApp() {
       if (typeof firebase === 'undefined' || !firebase.firestore) return;
       const db = firebase.firestore();
 
-      // Cargar historial de progreso
       db.collection('nutricion_usuarios').doc(this.userStoreId).collection('progreso')
         .orderBy('timestamp', 'desc')
         .onSnapshot((snapshot) => {
@@ -133,7 +131,7 @@ function initNutriApp() {
         });
     },
 
-    // --- LÓGICA DE CÁLCULO NUTRICIONAL ---
+    // MOTOR DE CÁLCULO PROPORCIONAL DINÁMICO
     calcularPlan() {
       const edad = Number(this.perfil.edad);
       const peso = Number(this.perfil.peso);
@@ -142,7 +140,7 @@ function initNutriApp() {
       const actividad = Number(this.perfil.actividad);
       const objetivo = this.perfil.objetivo;
 
-      // Fórmula Mifflin-St Jeor
+      // 1. Tasa Metabólica Basal (Mifflin-St Jeor)
       let tmb = (10 * peso) + (6.25 * estatura) - (5 * edad);
       tmb += (sexo === 'M') ? +5 : -161;
 
@@ -172,33 +170,52 @@ function initNutriApp() {
       if (sexo === 'F' && caloriasObjetivo < 1200) caloriasObjetivo = 1200;
       if (sexo === 'M' && caloriasObjetivo < 1500) caloriasObjetivo = 1500;
 
-      const grProteina = peso * grProteinaXKg;
-      const grGrasa = peso * 0.9;
-      const calCarbos = caloriasObjetivo - (grProteina * 4) - (grGrasa * 9);
-      const grCarbos = calCarbos / 4;
+      // 2. Macronutrientes totales
+      const grProteinaTotal = peso * grProteinaXKg;
+      const grGrasaTotal = peso * 0.9;
+      const calCarbos = caloriasObjetivo - (grProteinaTotal * 4) - (grGrasaTotal * 9);
+      const grCarbosTotal = Math.max(50, calCarbos / 4);
 
-      // Distribución por comidas en gramos reales
-      const protDesayuno = Math.round((grProteina * 0.3) / 20) * 50;
-      const protComida = Math.round((grProteina * 0.45) / 20) * 50;
-      const protCena = Math.round((grProteina * 0.25) / 20) * 50;
+      // 3. Distribución PROPORCIONAL en Alimento Real por Comidas
+      // Convertir gramos de proteína a gramos de carne/alimento cocido (100g carne = 22g proteína)
+      const grCarneTotalCocida = (grProteinaTotal / 22) * 100;
+      // Convertir gramos de CH a porciones de cereales (1 porción = 22g CH)
+      const porcionesCarbosTotales = Math.round(grCarbosTotal / 22);
 
-      const carbDesayuno = Math.round((grCarbos * 0.3) / 25);
-      const carbComida = Math.round((grCarbos * 0.5) / 25);
-      const carbCena = Math.max(1, Math.round((grCarbos * 0.2) / 25));
+      // Repartir en Desayuno (30%), Comida (45%), Cena (25%)
+      const dist = {
+        desayunoProt: Math.round((grCarneTotalCocida * 0.3) / 10) * 10,
+        comidaProt: Math.round((grCarneTotalCocida * 0.45) / 10) * 10,
+        cenaProt: Math.round((grCarneTotalCocida * 0.25) / 10) * 10,
+
+        desayunoLacteo: 100,
+        comidaLacteo: 50,
+        cenaLacteo: 100,
+
+        desayunoVerd: 40,
+        comidaVerd: 80,
+        cenaVerd: 40,
+
+        desayunoCarb: Math.max(1, Math.round(porcionesCarbosTotales * 0.3)),
+        comidaCarb: Math.max(1, Math.round(porcionesCarbosTotales * 0.5)),
+        cenaCarb: Math.max(1, Math.round(porcionesCarbosTotales * 0.2)),
+
+        desayunoFruta: 1,
+        comidaFruta: 1,
+        cenaFruta: 1,
+
+        desayunoGrasa: 1,
+        comidaGrasa: 1,
+        cenaGrasa: 1
+      };
 
       this.planCalculado = {
+        nombre: this.perfil.nombre || 'Usuario',
         calorias: Math.round(caloriasObjetivo),
-        proteinas: Math.round(grProteina),
-        carbos: Math.round(grCarbos),
-        grasas: Math.round(grGrasa),
-        distribucion: {
-          desayunoProt: protDesayuno,
-          comidaProt: protComida,
-          cenaProt: protCena,
-          desayunoCarb: carbDesayuno,
-          comidaCarb: carbComida,
-          cenaCarb: carbCena
-        }
+        proteinas: Math.round(grProteinaTotal),
+        carbos: Math.round(grCarbosTotal),
+        grasas: Math.round(grGrasaTotal),
+        dist: dist
       };
 
       localStorage.setItem('nutri_plan_cache', JSON.stringify(this.planCalculado));
